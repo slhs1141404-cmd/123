@@ -1,0 +1,6 @@
+{
+  "name": "The Earth",
+  "description": "An interactive 3D globe application for exploring countries, their statistics, and geography with real-time search and continent navigation.",
+  "requestFramePermissions": [],
+  "majorCapabilities": []
+}
