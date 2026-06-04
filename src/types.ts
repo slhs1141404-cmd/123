@@ -32,3 +32,36 @@ export interface GlobeGeoJSON {
     geometry: any;
   }>;
 }
+
+export interface PlayerStats {
+  highestTotalScore: number;
+  bestAverageDistance: number; // minimum average distance
+  longestCombo: number;
+  playCount: number;
+  totalCorrectGuesses: number;
+  correctAsiaCount: number;
+  correctEuropeCount: number;
+  correctAfricaCount: number;
+  correctAmericasCount: number;
+  correctOceaniaCount: number;
+  uniqueGuessedCca3s: string[]; // for collector achievements
+}
+
+export interface Achievement {
+  id: string;
+  title: string;
+  description: string;
+  category: 'region' | 'combo' | 'score' | 'play' | 'collector';
+  targetValue: number;
+  icon: string;
+}
+
+export interface LeaderboardEntry {
+  id: string;
+  playerName: string;
+  totalScore: number;
+  averageDistance: number;
+  level: number;
+  createdAt: string; // date string
+  isUser?: boolean;
+}

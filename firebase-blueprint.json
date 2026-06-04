@@ -1,0 +1,97 @@
+{
+  "entities": {
+    "LeaderboardEntry": {
+      "title": "LeaderboardEntry",
+      "description": "A leaderboard entry representing a player's finished game with core stats.",
+      "type": "object",
+      "properties": {
+        "playerName": {
+          "type": "string",
+          "description": "The name of the player"
+        },
+        "totalScore": {
+          "type": "integer",
+          "description": "Total custom game score earned by the player based on distances and combo bonuses"
+        },
+        "averageDistance": {
+          "type": "number",
+          "description": "Average distance error in kilometers"
+        },
+        "level": {
+          "type": "integer",
+          "description": "The level of the player at the time of submission"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "The server-validated timestamp of the submission"
+        }
+      },
+      "required": ["playerName", "totalScore", "averageDistance", "level", "createdAt"]
+    },
+    "User": {
+      "title": "User",
+      "description": "A player profile detailing their credentials, levels, XP pool, historical achievements, and cumulative metrics.",
+      "type": "object",
+      "properties": {
+        "username": {
+          "type": "string",
+          "description": "The custom nickname or explorer name chosen by the user"
+        },
+        "email": {
+          "type": "string",
+          "description": "The registered email address of the authenticated user"
+        },
+        "level": {
+          "type": "integer",
+          "description": "Calculated user explorer level"
+        },
+        "xp": {
+          "type": "integer",
+          "description": "Cumulative profile experience points"
+        },
+        "totalScore": {
+          "type": "integer",
+          "description": "Total combined score accumulated across all gameplay rounds"
+        },
+        "highestScore": {
+          "type": "integer",
+          "description": "Lifetime best single-round custom game score"
+        },
+        "longestCombo": {
+          "type": "integer",
+          "description": "Best consecutive correct answer combo streak"
+        },
+        "gamesPlayed": {
+          "type": "integer",
+          "description": "Count of completed 10-question world explorer sessions"
+        },
+        "achievements": {
+          "type": "array",
+          "description": "List of unlocked special accomplishment medal IDs"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "The record of database profile creation"
+        },
+        "lastLogin": {
+          "type": "string",
+          "format": "date-time",
+          "description": "The timestamp indicating the user's most recent interaction"
+        }
+      },
+      "required": ["username", "email", "level", "xp", "totalScore", "highestScore", "longestCombo", "gamesPlayed", "achievements", "createdAt", "lastLogin"]
+    }
+  },
+  "firestore": {
+    "leaderboard/{entryId}": {
+      "schema": "LeaderboardEntry",
+      "description": "Global leaderboard listings detailing optimal geographic scoring performances"
+    },
+    "users/{userId}": {
+      "schema": "User",
+      "description": "Individual authenticated user data, stats vaults, and achievement collections"
+    }
+  }
+}

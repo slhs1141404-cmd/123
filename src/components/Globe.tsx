@@ -39,6 +39,9 @@ interface GlobeProps {
   isGameActive?: boolean;
   gameHighlightCca3?: string | null;
   gameHighlightColor?: 'green' | 'red' | null;
+  guessCountry?: CountryData | null;
+  correctCountry?: CountryData | null;
+  showGameConnection?: boolean;
 }
 
 const Globe: React.FC<GlobeProps> = ({ 
@@ -56,7 +59,10 @@ const Globe: React.FC<GlobeProps> = ({
   setIsNightMode,
   isGameActive = false,
   gameHighlightCca3 = null,
-  gameHighlightColor = null
+  gameHighlightColor = null,
+  guessCountry = null,
+  correctCountry = null,
+  showGameConnection = false
 }) => {
   const globeEl = useRef<any>();
   const [countriesGeo, setCountriesGeo] = useState<any>(null);
@@ -108,17 +114,18 @@ const Globe: React.FC<GlobeProps> = ({
   };
 
   const arcsData = useMemo(() => {
+    const list: any[] = [];
     if (measurePoints.start && measurePoints.end) {
-      return [{
+      list.push({
         startLat: measurePoints.start.lat,
         startLng: measurePoints.start.lng,
         endLat: measurePoints.end.lat,
         endLng: measurePoints.end.lng,
         color: '#3b82f6',
         name: '起訖測距網絡'
-      }];
+      });
     }
-    return [];
+    return list;
   }, [measurePoints]);
 
   const getCountryForFeature = useCallback((d: any, countriesList: CountryData[]) => {
@@ -271,18 +278,75 @@ const Globe: React.FC<GlobeProps> = ({
   }, [selectedCountry, countries, getCountryForFeature]);
 
   const labelsData = useMemo(() => {
+    const list: any[] = [];
     if (selectedLandmark) {
-      return [{
+      list.push({
         lat: selectedLandmark.lat,
         lng: selectedLandmark.lng,
-        text: selectedLandmark.chineseName || selectedLandmark.name,
+        text: `📍 ${selectedLandmark.chineseName || selectedLandmark.name}`,
         color: '#10b981',
         size: 0.95
-      }];
+      });
     }
-    // Country labels (central green dot and text label) completely removed to keep Earth clean and border highlight only.
-    return [];
+    return list;
   }, [selectedLandmark]);
+
+  const customLayerData = useMemo(() => {
+    const list: any[] = [];
+    if (isGameActive && showGameConnection) {
+      if (guessCountry && guessCountry.latlng && guessCountry.latlng[0] !== 0) {
+        list.push({
+          lat: guessCountry.latlng[0],
+          lng: guessCountry.latlng[1],
+          color: '#ef4444', // Beautiful solid red
+          type: 'guess'
+        });
+      }
+      if (correctCountry && correctCountry.latlng && correctCountry.latlng[0] !== 0) {
+        list.push({
+          lat: correctCountry.latlng[0],
+          lng: correctCountry.latlng[1],
+          color: '#10b981', // Beautiful solid green
+          type: 'correct'
+        });
+      }
+    }
+    return list;
+  }, [isGameActive, showGameConnection, guessCountry, correctCountry]);
+
+  const customThreeObject = useCallback((d: any) => {
+    const group = new THREE.Group();
+    const colorVal = d.color || '#ef4444';
+    
+    // Solid high-visibility basic material so it shines independently of dynamic lights and is not occluded by environment shadow
+    const material = new THREE.MeshBasicMaterial({ 
+      color: colorVal,
+      depthTest: true,
+      depthWrite: true,
+      transparent: false
+    });
+    
+    // 1. Sleek 3D Cone pointing DOWN to the earth surface
+    // Pin shaft height = 3.2, base radius = 0.7
+    const h = 3.2;
+    const rBase = 0.7;
+    const coneGeom = new THREE.ConeGeometry(rBase, h, 16);
+    coneGeom.rotateX(Math.PI); // Flips so tip points down towards the sphere
+    
+    // Shift mesh upwards so the sharp tip sits precisely at y=0 (surface contact point)
+    const cone = new THREE.Mesh(coneGeom, material);
+    cone.position.y = h / 2;
+    group.add(cone);
+    
+    // 2. High-precision 3D Sphere head resting on top of the cone
+    const rSphere = 1.4; // Identical size for both red & green markers
+    const sphereGeom = new THREE.SphereGeometry(rSphere, 24, 24);
+    const sphere = new THREE.Mesh(sphereGeom, material);
+    sphere.position.y = h; // Centered at y=3.2
+    group.add(sphere);
+    
+    return group;
+  }, []);
 
   // Helper to get beautiful, lightweight general vector map colors per country/polygon
   const getLandColor = (d: any, isNight: boolean) => {
@@ -578,7 +642,7 @@ const Globe: React.FC<GlobeProps> = ({
     }
   }, [selectedLandmark]);
 
-  // Sync game highlight to camera movement so player can see skipped/correct answer easily
+  // Sync game highlight to camera movement so player can see correct answer easily when finished answering
   const lastGameHighlightRef = useRef<string | null>(null);
   useEffect(() => {
     if (isGameActive && gameHighlightCca3 && globeEl.current && gameHighlightCca3 !== lastGameHighlightRef.current) {
@@ -590,7 +654,7 @@ const Globe: React.FC<GlobeProps> = ({
         const targetLat = targetCountry.latlng[0];
         const targetLng = targetCountry.latlng[1];
         
-        // Fluid flying transition
+        // Fluid flying transition: zoom out slightly first then dive into location
         const currentAltitude = pov.altitude;
         const jumpAlt = Math.max(currentAltitude * 1.25, 1.85);
 
@@ -598,15 +662,15 @@ const Globe: React.FC<GlobeProps> = ({
           lat: pov.lat + (targetLat - pov.lat) * 0.35,
           lng: pov.lng + (targetLng - pov.lng) * 0.35,
           altitude: jumpAlt
-        }, 450);
+        }, 500);
 
         setTimeout(() => {
           globe.pointOfView({
             lat: targetLat,
             lng: targetLng,
             altitude: 1.15
-          }, 850);
-        }, 460);
+          }, 950);
+        }, 520);
       }
     } else if (!gameHighlightCca3) {
       lastGameHighlightRef.current = null;
@@ -615,11 +679,11 @@ const Globe: React.FC<GlobeProps> = ({
 
   useEffect(() => {
     if (globeEl.current) {
-      const isAutoRotate = !selectedCountry && !searchTerm && regionFilter === 'All';
+      const isAutoRotate = !isGameActive && !selectedCountry && !searchTerm && regionFilter === 'All';
       globeEl.current.controls().autoRotate = isAutoRotate;
       globeEl.current.controls().autoRotateSpeed = 0.5;
     }
-  }, [selectedCountry, searchTerm, regionFilter]);
+  }, [selectedCountry, searchTerm, regionFilter, isGameActive]);
 
   // Interactive navigation commands
   const handleCompassReset = () => {
@@ -812,6 +876,11 @@ const Globe: React.FC<GlobeProps> = ({
         labelSize={d => d.size}
         labelDotRadius={1.1}
         labelResolution={6}
+        
+        customLayerData={customLayerData}
+        customLayerLat={d => d.lat}
+        customLayerLng={d => d.lng}
+        customThreeObject={customThreeObject}
         
         rendererConfig={{ 
           antialias: false, 
