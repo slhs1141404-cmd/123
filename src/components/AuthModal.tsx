@@ -53,6 +53,33 @@ export default function AuthModal({ isOpen, onClose, onSuccess, defaultTab = 'lo
       msg = "❌ 密碼強度不足，長度至少需達 8 個字元！";
     } else if (error.code === 'auth/wrong-password' || error.code === 'auth/user-not-found' || error.code === 'auth/invalid-credential') {
       msg = "❌ 電子郵件或密碼輸入錯誤，請重新確認！";
+    } else if (error.code === 'auth/popup-closed-by-user') {
+      msg = `⚠️ Google 登入視窗已被關閉。
+
+💡 [預覽環境提示]
+本遊戲目前運行在內嵌的預覽視窗 (IFrame) 中，為遵循瀏覽器同源策略與跨網域阻擋，Google 彈出視窗有時會被自動關閉或通訊失敗。
+
+【請選擇以下方式繼續】：
+1. 點擊右上角「在新分頁中開啟應用程式」按鈕，在獨立分頁即可完美使用 Google 快速登入。
+2. 或直接在下方輸入信箱與密碼進行註冊/登入（大推薦！此功能在預覽環境 100% 運作良好，能完美同步與儲存您的世界大賽積分）。`;
+    } else if (error.code === 'auth/popup-blocked') {
+      msg = `🚫 彈出視窗已被瀏覽器阻擋！
+
+💡 [預覽環境提示]
+瀏覽器安全性通常會阻擋內嵌視窗的 Popup。
+
+【請選擇以下方式繼續】：
+1. 點擊右上角「在新分頁中開啟應用程式」按鈕即可正常使用 Google 登入。
+2. 同時也強烈建議您直接在下方使用一般的「電子信箱與密碼」進行登入。`;
+    } else if (error.code === 'auth/cancelled-popup-request') {
+      msg = `⚠️ Google 登入請求已被取消。
+
+💡 [預覽環境提示]
+由於多次點擊或預覽視窗 (IFrame) 通訊中斷。
+
+【請選擇以下方式繼續】：
+1. 點擊右上角「在新分頁中開啟應用程式」按鈕重試。
+2. 或是使用下方的「一般電子信箱與密碼」註冊與登入。`;
     } else if (error.message) {
       msg = `❌ 錯誤：${error.message}`;
     }
@@ -275,9 +302,9 @@ export default function AuthModal({ isOpen, onClose, onSuccess, defaultTab = 'lo
           )}
 
           {errorMsg && (
-            <div className="p-2.5 bg-rose-500/10 border border-rose-500/20 text-rose-350 text-[10px] rounded-xl font-bold flex items-start gap-1.5 leading-normal">
-              <Info className="w-3.5 h-3.5 shrink-0 text-rose-450" />
-              <span>{errorMsg}</span>
+            <div className="p-3 bg-rose-500/10 border border-rose-500/20 text-rose-300 text-[11px] rounded-xl font-bold flex items-start gap-1.5 leading-relaxed">
+              <Info className="w-3.5 h-3.5 shrink-0 text-rose-450 mt-0.5" />
+              <span className="whitespace-pre-line">{errorMsg}</span>
             </div>
           )}
 
