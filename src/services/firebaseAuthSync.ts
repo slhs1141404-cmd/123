@@ -37,6 +37,151 @@ export interface FirebaseUserProfile {
 }
 
 /**
+ * Native SHA-256 string hashing helper.
+ */
+export async function sha256(message: string): Promise<string> {
+  const msgBuffer = new TextEncoder().encode(message);
+  const hashBuffer = await crypto.subtle.digest('SHA-256', msgBuffer);
+  const hashArray = Array.from(new Uint8Array(hashBuffer));
+  return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
+/**
+ * Register a custom Username + Password user entirely in Firestore.
+ */
+export async function registerCustomUser(
+  username: string,
+  passwordRaw: string,
+  localStats: PlayerStats,
+  localXP: number,
+  localName: string
+): Promise<any> {
+  const normalizedUid = username.trim().toLowerCase();
+  const userPath = `users/${normalizedUid}`;
+  try {
+    const userDocRef = doc(db, 'users', normalizedUid);
+    const docSnap = await getDoc(userDocRef);
+
+    if (docSnap.exists()) {
+      const err = new Error("auth/email-already-in-use");
+      (err as any).code = 'auth/email-already-in-use';
+      throw err;
+    }
+
+    const hashedPassword = await sha256(passwordRaw);
+    const initialAchievements = checkAchievements(localStats, localStats.highestTotalScore)
+      .filter(a => a.status)
+      .map(a => a.id);
+
+    const resolvedName = username.trim();
+
+    const initialProfile: any = {
+      username: resolvedName,
+      password: hashedPassword,
+      email: `${normalizedUid}@vgeoguesser.local`,
+      level: getLevelDetails(localXP).level,
+      xp: localXP,
+      totalScore: 0,
+      highestScore: localStats.highestTotalScore,
+      longestCombo: localStats.longestCombo,
+      gamesPlayed: localStats.playCount,
+      achievements: initialAchievements,
+      createdAt: serverTimestamp(),
+      lastLogin: serverTimestamp()
+    };
+
+    await setDoc(userDocRef, initialProfile);
+    return {
+      uid: normalizedUid,
+      displayName: resolvedName,
+      email: initialProfile.email,
+      isCustom: true
+    };
+  } catch (error) {
+    if ((error as any).code) throw error;
+    handleFirestoreError(error, OperationType.WRITE, userPath);
+    throw error;
+  }
+}
+
+/**
+ * Authenticates a custom Username + Password user entirely in Firestore.
+ */
+export async function loginCustomUser(
+  username: string,
+  passwordRaw: string
+): Promise<any> {
+  const normalizedUid = username.trim().toLowerCase();
+  const userPath = `users/${normalizedUid}`;
+  try {
+    const userDocRef = doc(db, 'users', normalizedUid);
+    const docSnap = await getDoc(userDocRef);
+
+    if (!docSnap.exists()) {
+      const err = new Error("auth/user-not-found");
+      (err as any).code = 'auth/user-not-found';
+      throw err;
+    }
+
+    const serverData = docSnap.data();
+    const hashedPassword = await sha256(passwordRaw);
+
+    if (serverData.password !== hashedPassword) {
+      const err = new Error("auth/wrong-password");
+      (err as any).code = 'auth/wrong-password';
+      throw err;
+    }
+
+    await updateDoc(userDocRef, {
+      lastLogin: serverTimestamp()
+    });
+
+    return {
+      uid: normalizedUid,
+      displayName: serverData.username,
+      email: serverData.email || '',
+      isCustom: true
+    };
+  } catch (error) {
+    if ((error as any).code) throw error;
+    handleFirestoreError(error, OperationType.WRITE, userPath);
+    throw error;
+  }
+}
+
+/**
+ * Synchronize the custom credentials user with Firestore.
+ */
+export async function syncCustomUserProfile(
+  uid: string,
+  localStats: PlayerStats,
+  localXP: number,
+  localName: string
+): Promise<any> {
+  const userPath = `users/${uid}`;
+  try {
+    const userDocRef = doc(db, 'users', uid);
+    const docSnap = await getDoc(userDocRef);
+
+    if (docSnap.exists()) {
+      const serverData = docSnap.data();
+      await updateDoc(userDocRef, {
+        lastLogin: serverTimestamp()
+      });
+      return {
+        ...serverData,
+        lastLogin: new Date()
+      };
+    } else {
+      throw new Error("Custom profile not found.");
+    }
+  } catch (error) {
+    handleFirestoreError(error, OperationType.WRITE, userPath);
+    throw error;
+  }
+}
+
+/**
  * Synchronize the authenticated user with Firestore.
  * If the user's document does *not* exist in Firestore, initialize it with current local stats and name.
  * If it does exist, fetch and return the server data to keep local storage up-to-date.

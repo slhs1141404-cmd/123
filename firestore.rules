@@ -26,23 +26,44 @@ service cloud.firestore {
 
     // Entity Schema Validation Blueprint: User Document Structure
     function isValidUser(data) {
-      return data.keys().hasAll([
-        'username', 'email', 'level', 'xp', 'totalScore', 
-        'highestScore', 'longestCombo', 'gamesPlayed', 
-        'achievements', 'createdAt', 'lastLogin'
-      ]) 
-      && data.keys().size() == 11
-      && data.username is string && data.username.size() >= 1 && data.username.size() <= 40
-      && data.email is string && data.email.size() >= 0 && data.email.size() <= 100
-      && data.level is int && data.level >= 1 && data.level <= 100
-      && data.xp is int && data.xp >= 0 && data.xp <= 5000000
-      && data.totalScore is int && data.totalScore >= 0
-      && data.highestScore is int && data.highestScore >= 0
-      && data.longestCombo is int && data.longestCombo >= 0
-      && data.gamesPlayed is int && data.gamesPlayed >= 0
-      && data.achievements is list && data.achievements.size() <= 50
-      && data.createdAt is timestamp
-      && data.lastLogin is timestamp;
+      return (
+        data.keys().hasAll([
+          'username', 'email', 'level', 'xp', 'totalScore', 
+          'highestScore', 'longestCombo', 'gamesPlayed', 
+          'achievements', 'createdAt', 'lastLogin'
+        ]) 
+        && data.keys().size() == 11
+        && data.username is string && data.username.size() >= 1 && data.username.size() <= 40
+        && data.email is string && data.email.size() >= 0 && data.email.size() <= 100
+        && data.level is int && data.level >= 1 && data.level <= 100
+        && data.xp is int && data.xp >= 0 && data.xp <= 5000000
+        && data.totalScore is int && data.totalScore >= 0
+        && data.highestScore is int && data.highestScore >= 0
+        && data.longestCombo is int && data.longestCombo >= 0
+        && data.gamesPlayed is int && data.gamesPlayed >= 0
+        && data.achievements is list && data.achievements.size() <= 100
+        && data.createdAt is timestamp
+        && data.lastLogin is timestamp
+      ) || (
+        data.keys().hasAll([
+          'username', 'password', 'email', 'level', 'xp', 'totalScore', 
+          'highestScore', 'longestCombo', 'gamesPlayed', 
+          'achievements', 'createdAt', 'lastLogin'
+        ]) 
+        && data.keys().size() == 12
+        && data.username is string && data.username.size() >= 1 && data.username.size() <= 40
+        && data.password is string && data.password.size() == 64
+        && data.email is string && data.email.size() >= 0 && data.email.size() <= 100
+        && data.level is int && data.level >= 1 && data.level <= 100
+        && data.xp is int && data.xp >= 0 && data.xp <= 5000000
+        && data.totalScore is int && data.totalScore >= 0
+        && data.highestScore is int && data.highestScore >= 0
+        && data.longestCombo is int && data.longestCombo >= 0
+        && data.gamesPlayed is int && data.gamesPlayed >= 0
+        && data.achievements is list && data.achievements.size() <= 100
+        && data.createdAt is timestamp
+        && data.lastLogin is timestamp
+      );
     }
 
     // Entity Schema Validation Blueprint: Leaderboard Entry Structure
@@ -60,21 +81,21 @@ service cloud.firestore {
 
     // Collection Route: Users Profile Data Storage
     match /users/{userId} {
-      allow read: if isSignedIn() && request.auth.uid == userId;
+      allow read: if true;
       
-      allow create: if isSignedIn() 
-        && request.auth.uid == userId 
-        && isValidId(userId) 
+      allow create: if isValidId(userId) 
         && isValidUser(incoming()) 
         && incoming().createdAt == request.time 
         && incoming().lastLogin == request.time;
 
-      allow update: if isSignedIn() 
-        && request.auth.uid == userId 
-        && isValidId(userId) 
+      allow update: if isValidId(userId) 
         && isValidUser(incoming()) 
         && incoming().createdAt == existing().createdAt 
-        && incoming().lastLogin == request.time;
+        && incoming().lastLogin == request.time
+        && (
+          (isSignedIn() && request.auth.uid == userId)
+          || (existing().keys().hasAll(['password']) && existing().password == incoming().password)
+        );
 
       allow delete: if false;
     }
@@ -83,8 +104,7 @@ service cloud.firestore {
     match /leaderboard/{entryId} {
       allow read: if true; // Public listings accessible to all visitors
       
-      allow create: if isSignedIn() 
-        && isValidId(entryId) 
+      allow create: if isValidId(entryId) 
         && isValidLeaderboardEntry(incoming()) 
         && incoming().createdAt == request.time;
 

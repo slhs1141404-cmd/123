@@ -7,14 +7,9 @@ import React, { useState } from 'react';
 import { motion } from 'motion/react';
 import { X, Lock, User, Info, RefreshCw, LogIn, UserPlus } from 'lucide-react';
 import { 
-  signInWithEmailAndPassword, 
-  createUserWithEmailAndPassword, 
-  updateProfile,
-  setPersistence,
-  browserLocalPersistence,
-  browserSessionPersistence
-} from 'firebase/auth';
-import { auth } from '../services/firebase';
+  registerCustomUser, 
+  loginCustomUser 
+} from '../services/firebaseAuthSync';
 
 interface AuthModalProps {
   isOpen: boolean;
@@ -22,15 +17,6 @@ interface AuthModalProps {
   onSuccess: (message: string) => void;
   defaultTab?: 'login' | 'signup';
 }
-
-// Convert unique human username into safe valid virtual email under the hood
-const usernameToEmail = (uname: string) => {
-  const clean = uname.trim().toLowerCase();
-  const hex = Array.from(new TextEncoder().encode(clean))
-    .map(b => b.toString(16).padStart(2, '0'))
-    .join('');
-  return `${hex}@vgeoguesser.local`;
-};
 
 export default function AuthModal({ isOpen, onClose, onSuccess, defaultTab = 'login' }: AuthModalProps) {
   const [tab, setTab] = useState<'login' | 'signup'>(defaultTab === 'login' ? 'login' : 'signup');
@@ -67,6 +53,18 @@ export default function AuthModal({ isOpen, onClose, onSuccess, defaultTab = 'lo
       msg = "❌ 密碼強度不足，長度至少需達 8 個字元！";
     } else if (error.code === 'auth/wrong-password' || error.code === 'auth/user-not-found' || error.code === 'auth/invalid-credential') {
       msg = "❌ 使用者名稱或密碼輸入錯誤，請重新確認！";
+    } else if (error.code === 'auth/operation-not-allowed') {
+      msg = `🚫 自訂帳號密碼功能尚未啟用 (operation-not-allowed)
+
+💡 【發生原因與解決方法】：
+您的 Firebase 專案目前尚未在後台啟用「電子郵件與密碼」支援選項。請照著以下 30 秒步驟開啟：
+
+1. 👉 [進入 Firebase 登入方式管理頁](https://console.firebase.google.com/project/secret-verve-smvz5/authentication/providers)
+2. 點擊畫面上的藍色按鈕 【新增登入提供者 (Add provider)】。
+3. 選擇選單中的第一個 【電子郵件 / 密碼 (Email/Password)】。
+4. 將第一個選項（電子郵件/密碼）的「啟用 (Enable)」滑桿打開，然後點擊最下方的「儲存 (Save)」按鈕。
+
+調整完畢後只要重新回到本頁面，就能免信箱，直接使用任意「使用者名稱（暱稱）+ 密碼」秒速註冊與登入了！`;
     } else if (error.message) {
       msg = `❌ 錯誤：${error.message}`;
     }
@@ -91,12 +89,13 @@ export default function AuthModal({ isOpen, onClose, onSuccess, defaultTab = 'lo
 
     setIsLoading(true);
     try {
-      const virtualEmail = usernameToEmail(cleanUsername);
-      // Apply correct persistence layer according to 'Remember Me'
-      await setPersistence(auth, rememberMe ? browserLocalPersistence : browserSessionPersistence);
-      await signInWithEmailAndPassword(auth, virtualEmail, password);
+      const customUser = await loginCustomUser(cleanUsername, password);
+      localStorage.setItem('geo_custom_user', JSON.stringify(customUser));
       onSuccess(`⚡ 歡迎回來 ${cleanUsername}！線上大賽統計與成就同步已啟用。`);
       onClose();
+      setTimeout(() => {
+        window.location.reload();
+      }, 500);
     } catch (err: any) {
       handleError(err);
     } finally {
@@ -126,16 +125,31 @@ export default function AuthModal({ isOpen, onClose, onSuccess, defaultTab = 'lo
 
     setIsLoading(true);
     try {
-      const virtualEmail = usernameToEmail(cleanUsername);
-      const userCredential = await createUserWithEmailAndPassword(auth, virtualEmail, password);
-      
-      // Update global Auth profile with custom username
-      await updateProfile(userCredential.user, {
-        displayName: cleanUsername
-      });
+      const freshName = localStorage.getItem('geo_player_name') || 'Guest 探險家';
+      const freshXP = parseInt(localStorage.getItem('geo_player_xp') || '0', 10);
+      const parsedStats = JSON.parse(localStorage.getItem('geo_player_stats') || '{}');
+      const freshStats = {
+        highestTotalScore: 0,
+        bestAverageDistance: 999999,
+        longestCombo: 0,
+        playCount: 0,
+        totalCorrectGuesses: 0,
+        correctAsiaCount: 0,
+        correctEuropeCount: 0,
+        correctAfricaCount: 0,
+        correctAmericasCount: 0,
+        correctOceaniaCount: 0,
+        uniqueGuessedCca3s: [],
+        ...parsedStats
+      };
 
+      const customUser = await registerCustomUser(cleanUsername, password, freshStats, freshXP, freshName);
+      localStorage.setItem('geo_custom_user', JSON.stringify(customUser));
       onSuccess(`🎉 註冊成功！歡迎加入，您的專屬探險者號【${cleanUsername}】已就緒。`);
       onClose();
+      setTimeout(() => {
+        window.location.reload();
+      }, 500);
     } catch (err: any) {
       handleError(err);
     } finally {

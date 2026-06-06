@@ -30,6 +30,7 @@ import { auth } from './services/firebase';
 import { signOut, onAuthStateChanged, getRedirectResult, User as FirebaseUser } from 'firebase/auth';
 import { 
   syncUserProfile, 
+  syncCustomUserProfile,
   updateUserStatsAndXP, 
   submitLeaderboardScoreToFirebase, 
   getLeaderboardFromFirebase 
@@ -48,7 +49,7 @@ export default function App() {
   const [selectedLandmark, setSelectedLandmark] = useState<any | null>(null);
 
   // === 🔑 MEMBERSHIP & BACKEND SYNC STATES ===
-  const [user, setUser] = useState<FirebaseUser | null>(null);
+  const [user, setUser] = useState<any>(null);
   const [isAuthLoading, setIsAuthLoading] = useState(true);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [authModalDefaultTab, setAuthModalDefaultTab] = useState<'login' | 'signup'>('login');
@@ -150,8 +151,62 @@ export default function App() {
     localStorage.setItem('geo_player_avatar', playerAvatar);
   }, [playerAvatar]);
 
-  // Listen to Firebase Authentication Status Changes
+  // Listen to Authentication Status Changes (Priority: Custom Local User -> Firebase Auth)
   useEffect(() => {
+    const savedCustomUser = localStorage.getItem('geo_custom_user');
+    if (savedCustomUser) {
+      try {
+        const parsed = JSON.parse(savedCustomUser);
+        setUser(parsed);
+        setIsAuthLoading(false);
+        
+        // Sync stats for custom user
+        (async () => {
+          try {
+            const freshName = localStorage.getItem('geo_player_name') || playerName;
+            const freshXP = parseInt(localStorage.getItem('geo_player_xp') || '0', 10);
+            const parsedStats = JSON.parse(localStorage.getItem('geo_player_stats') || '{}');
+            const freshStats = {
+              highestTotalScore: 0,
+              bestAverageDistance: 999999,
+              longestCombo: 0,
+              playCount: 0,
+              totalCorrectGuesses: 0,
+              correctAsiaCount: 0,
+              correctEuropeCount: 0,
+              correctAfricaCount: 0,
+              correctAmericasCount: 0,
+              correctOceaniaCount: 0,
+              uniqueGuessedCca3s: [],
+              ...parsedStats
+            };
+            
+            const serverProfile = await syncCustomUserProfile(parsed.uid, freshStats, freshXP, freshName);
+            
+            setPlayerName(serverProfile.username || parsed.displayName);
+            setPlayerXP(serverProfile.xp);
+            setPlayerStats((prev: any) => ({
+              ...prev,
+              highestTotalScore: serverProfile.highestScore,
+              longestCombo: serverProfile.longestCombo,
+              playCount: serverProfile.gamesPlayed,
+            }));
+            const savedAvatar = localStorage.getItem('geo_player_avatar') || '🧭';
+            setPlayerAvatar(savedAvatar);
+            setGameToast({ 
+              message: `⚡ 帳號已同步：歡迎探險家【${serverProfile.username}】登入！個人屬性已成功自雲端加載。`, 
+              type: 'success' 
+            });
+          } catch (e) {
+            console.error("Failed syncing custom credentials profile:", e);
+          }
+        })();
+        return;
+      } catch (err) {
+        console.error("Failed parsing stored custom credentials user:", err);
+      }
+    }
+
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
       setUser(currentUser);
       setIsAuthLoading(false);
@@ -252,6 +307,8 @@ export default function App() {
       localStorage.removeItem('geo_player_xp');
       localStorage.removeItem('geo_player_stats');
       localStorage.removeItem('geo_player_avatar');
+      localStorage.removeItem('geo_custom_user');
+      setUser(null);
       
       setGameToast({ message: "🚪 您已安全登出探險家帳戶！清除登入狀態並已回到探索主頁。", type: 'success' });
     } catch (e) {
@@ -568,12 +625,12 @@ export default function App() {
           longestCombo: newLongestCombo
         };
 
-        // If authenticated on Firebase:
-        if (auth.currentUser) {
+        // If authenticated (via Firebase Auth or custom credential):
+        if (user) {
           const freshXP = playerXP + gainedXP;
           const freshLvl = getLevelDetails(freshXP).level;
           
-          updateUserStatsAndXP(auth.currentUser.uid, updated, freshXP, playerName);
+          updateUserStatsAndXP(user.uid, updated, freshXP, playerName);
           submitLeaderboardScoreToFirebase(playerName, finalScore, avgDistance, freshLvl);
         }
 
