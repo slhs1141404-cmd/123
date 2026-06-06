@@ -27,7 +27,7 @@ import {
 
 // Firebase Database & Authentication System
 import { auth } from './services/firebase';
-import { signOut, onAuthStateChanged, User as FirebaseUser } from 'firebase/auth';
+import { signOut, onAuthStateChanged, getRedirectResult, User as FirebaseUser } from 'firebase/auth';
 import { 
   syncUserProfile, 
   updateUserStatsAndXP, 
@@ -83,35 +83,24 @@ export default function App() {
     return val ? parseInt(val, 10) : 0;
   });
   const [playerStats, setPlayerStats] = useState<any>(() => {
+    const fallback = {
+      highestTotalScore: 0,
+      bestAverageDistance: 999999,
+      longestCombo: 0,
+      playCount: 0,
+      totalCorrectGuesses: 0,
+      correctAsiaCount: 0,
+      correctEuropeCount: 0,
+      correctAfricaCount: 0,
+      correctAmericasCount: 0,
+      correctOceaniaCount: 0,
+      uniqueGuessedCca3s: []
+    };
     try {
       const saved = localStorage.getItem('geo_player_stats');
-      return saved ? JSON.parse(saved) : {
-        highestTotalScore: 0,
-        bestAverageDistance: 999999,
-        longestCombo: 0,
-        playCount: 0,
-        totalCorrectGuesses: 0,
-        correctAsiaCount: 0,
-        correctEuropeCount: 0,
-        correctAfricaCount: 0,
-        correctAmericasCount: 0,
-        correctOceaniaCount: 0,
-        uniqueGuessedCca3s: []
-      };
+      return saved ? { ...fallback, ...JSON.parse(saved) } : fallback;
     } catch {
-      return {
-        highestTotalScore: 0,
-        bestAverageDistance: 999999,
-        longestCombo: 0,
-        playCount: 0,
-        totalCorrectGuesses: 0,
-        correctAsiaCount: 0,
-        correctEuropeCount: 0,
-        correctAfricaCount: 0,
-        correctAmericasCount: 0,
-        correctOceaniaCount: 0,
-        uniqueGuessedCca3s: []
-      };
+      return fallback;
     }
   });
 
@@ -170,7 +159,21 @@ export default function App() {
         try {
           const freshName = localStorage.getItem('geo_player_name') || playerName;
           const freshXP = parseInt(localStorage.getItem('geo_player_xp') || '0', 10);
-          const freshStats = JSON.parse(localStorage.getItem('geo_player_stats') || '{}');
+          const parsedStats = JSON.parse(localStorage.getItem('geo_player_stats') || '{}');
+          const freshStats = {
+            highestTotalScore: 0,
+            bestAverageDistance: 999999,
+            longestCombo: 0,
+            playCount: 0,
+            totalCorrectGuesses: 0,
+            correctAsiaCount: 0,
+            correctEuropeCount: 0,
+            correctAfricaCount: 0,
+            correctAmericasCount: 0,
+            correctOceaniaCount: 0,
+            uniqueGuessedCca3s: [],
+            ...parsedStats
+          };
           
           const serverProfile = await syncUserProfile(currentUser, freshStats, freshXP, freshName);
           
@@ -194,6 +197,33 @@ export default function App() {
       }
     });
     return () => unsubscribe();
+  }, []);
+
+  // Check for Google Auth Redirect login results on startup
+  useEffect(() => {
+    getRedirectResult(auth)
+      .then((result) => {
+        if (result?.user) {
+          setGameToast({
+            message: `⚡ 已成功透過 Google 網頁重導向 (Redirect) 載入您的探險者帳號！`,
+            type: 'success'
+          });
+        }
+      })
+      .catch((error: any) => {
+        console.error("Firebase auth redirect error:", error);
+        let errorMsg = "⚠️ 載入 Google 重導向資料失敗。";
+        if (error.code === 'auth/unauthorized-domain') {
+          const currentDomain = window.location.hostname;
+          errorMsg = `🚫 重導向登入網域未授權：目前網域 [${currentDomain}] 尚未及時登錄在您的 Firebase 【授權網域】中。`;
+        } else if (error.message) {
+          errorMsg = `⚠️ 登入錯誤：${error.message}`;
+        }
+        setGameToast({
+          message: errorMsg,
+          type: 'error'
+        });
+      });
   }, []);
 
   const handleLogout = async () => {

@@ -11,6 +11,7 @@ import {
   createUserWithEmailAndPassword, 
   sendPasswordResetEmail, 
   signInWithPopup, 
+  signInWithRedirect,
   updateProfile,
   setPersistence,
   browserLocalPersistence,
@@ -64,12 +65,14 @@ export default function AuthModal({ isOpen, onClose, onSuccess, defaultTab = 'lo
 1. 開啟 [Firebase 控制台](https://console.firebase.google.com/)。
 2. 進入本專案，選取左側選單的 【Authentication】並切換至【設定 (Settings)】標籤頁。
 3. 找到【授權網域 (Authorized domains)】區塊，點擊【新增網域 (Add domain)】並新增以下網域：
-   👉 **${currentDomain}**
+   👉 **${currentDomain}** (您當前的網域)
+   👉 如果您部署於 **Render**，請新增您的 Render 託管網域 (例如：**your-app.onrender.com**)
    👉 **ais-pre-p6xbxzoojkbdddp2upeoz7-749001144565.asia-east1.run.app**
    👉 **ais-dev-p6xbxzoojkbdddp2upeoz7-749001144565.asia-east1.run.app**
 
 【此時可用的 100% 成功替代方案】：
-您不需要完成上述設定，直接在下方輸入「電子郵件與密碼」即可完成註冊與登入！此功能在預覽環境 100% 運作良好，能立刻記錄您的大賽積分。`;
+此外，網頁重導向 (Redirect) 及一般的「電子信箱與密碼認證」可完全繞過網頁彈出視窗(Popup)的限制。
+直接在下方輸入「電子郵件與密碼」即可完成註冊與登入！此功能 100% 運作良好，能立刻記錄您的世界積分。`;
     } else if (error.code === 'auth/popup-closed-by-user') {
       msg = `⚠️ Google 登入視窗已被關閉。
 
@@ -198,6 +201,18 @@ export default function AuthModal({ isOpen, onClose, onSuccess, defaultTab = 'lo
       await signInWithPopup(auth, googleProvider);
       onSuccess("⚡ 已透過 Google 帳號快速登入世界大賽中樞！");
       onClose();
+    } catch (err: any) {
+      handleError(err);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleGoogleSignInRedirect = async () => {
+    setErrorMsg(null);
+    setIsLoading(true);
+    try {
+      await signInWithRedirect(auth, googleProvider);
     } catch (err: any) {
       handleError(err);
     } finally {
@@ -352,21 +367,38 @@ export default function AuthModal({ isOpen, onClose, onSuccess, defaultTab = 'lo
             <span className="relative px-3 bg-neutral-900 text-[10px] text-neutral-500 font-black uppercase tracking-wider">或</span>
           </div>
 
-          <button
-            type="button"
-            onClick={handleGoogleSignIn}
-            disabled={isLoading}
-            className="w-full py-2.5 bg-neutral-950 hover:bg-neutral-850 text-white border border-neutral-800 hover:border-neutral-700 text-xs font-black rounded-xl transition-all cursor-pointer flex items-center justify-center gap-2"
-          >
-            {/* Elegant SVG Google Icon Logo */}
-            <svg className="w-4 h-4 shrink-0" viewBox="0 0 24 24">
-              <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
-              <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
-              <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l3.66-2.85z"/>
-              <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.85c.87-2.6 3.3-4.53 6.16-4.53z"/>
-            </svg>
-            <span>使用 Google 快速登入</span>
-          </button>
+          <div className="grid grid-cols-1 gap-2">
+            <button
+              type="button"
+              onClick={handleGoogleSignIn}
+              disabled={isLoading}
+              className="w-full py-2.5 bg-neutral-950 hover:bg-neutral-850 text-white border border-neutral-800 hover:border-neutral-700 text-xs font-black rounded-xl transition-all cursor-pointer flex items-center justify-center gap-2"
+            >
+              {/* Elegant SVG Google Icon Logo */}
+              <svg className="w-4 h-4 shrink-0" viewBox="0 0 24 24">
+                <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+                <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+                <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l3.66-2.85z"/>
+                <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.85c.87-2.6 3.3-4.53 6.16-4.53z"/>
+              </svg>
+              <span>Google 彈出視窗登入</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={handleGoogleSignInRedirect}
+              disabled={isLoading}
+              className="w-full py-2.5 bg-neutral-950 hover:bg-neutral-850 hover:text-indigo-300 text-neutral-300 border border-neutral-800 hover:border-neutral-750 text-xs font-bold rounded-xl transition-all cursor-pointer flex items-center justify-center gap-2"
+            >
+              <svg className="w-4 h-4 shrink-0 opacity-80" viewBox="0 0 24 24">
+                <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+                <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+                <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l3.66-2.85z"/>
+                <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.85c.87-2.6 3.3-4.53 6.16-4.53z"/>
+              </svg>
+              <span>Google 網頁重導向登入 (Redirect)</span>
+            </button>
+          </div>
         </div>
 
         {/* Footer Switching Tab */}

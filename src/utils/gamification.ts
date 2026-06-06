@@ -127,46 +127,51 @@ export const submitLeaderboardScore = (playerName: string, totalScore: number, a
 
 // Checking achievements state
 export function checkAchievements(stats: PlayerStats, highscore: number) {
+  const safeStats = {
+    ...DEFAULT_PLAYER_STATS,
+    ...stats
+  };
+
   const list = [
     {
       id: 'asia_clean',
       title: '🏆 亞洲全對',
       description: '歷史上正確猜中所有 26 個亞洲國家/區域至少一次',
       category: 'region' as const,
-      status: stats.uniqueGuessedCca3s.filter(code => ASIA_CCA3.includes(code.toUpperCase())).length >= 26,
-      progress: `${stats.uniqueGuessedCca3s.filter(code => ASIA_CCA3.includes(code.toUpperCase())).length} / 26`
+      status: (safeStats.uniqueGuessedCca3s || []).filter(code => ASIA_CCA3.includes(code.toUpperCase())).length >= 26,
+      progress: `${(safeStats.uniqueGuessedCca3s || []).filter(code => ASIA_CCA3.includes(code.toUpperCase())).length} / 26`
     },
     {
       id: 'europe_expert',
       title: '🏆 歐洲專家',
       description: '歐洲國家答對超過 50 次',
       category: 'region' as const,
-      status: stats.correctEuropeCount >= 50,
-      progress: `${stats.correctEuropeCount} / 50`
+      status: (safeStats.correctEuropeCount || 0) >= 50,
+      progress: `${safeStats.correctEuropeCount || 0} / 50`
     },
     {
       id: 'africa_explorer',
       title: '🏆 非洲探索者',
       description: '非洲國家答對超過 30 次',
       category: 'region' as const,
-      status: stats.correctAfricaCount >= 30,
-      progress: `${stats.correctAfricaCount} / 30`
+      status: (safeStats.correctAfricaCount || 0) >= 30,
+      progress: `${safeStats.correctAfricaCount || 0} / 30`
     },
     {
       id: 'americas_master',
       title: '🏆 美洲達人',
       description: '北美與南美聯邦對抗答對超過 50 次',
       category: 'region' as const,
-      status: stats.correctAmericasCount >= 50,
-      progress: `${stats.correctAmericasCount} / 50`
+      status: (safeStats.correctAmericasCount || 0) >= 50,
+      progress: `${safeStats.correctAmericasCount || 0} / 50`
     },
     {
       id: 'oceania_pro',
       title: '🏆 大洋洲專家',
       description: '大洋洲群島答對超過 20 次',
       category: 'region' as const,
-      status: stats.correctOceaniaCount >= 20,
-      progress: `${stats.correctOceaniaCount} / 20`
+      status: (safeStats.correctOceaniaCount || 0) >= 20,
+      progress: `${safeStats.correctOceaniaCount || 0} / 20`
     },
     
     // Combo
@@ -175,32 +180,32 @@ export function checkAchievements(stats: PlayerStats, highscore: number) {
       title: '🔥 10連擊',
       description: '連續答對 10 題國家位置考驗',
       category: 'combo' as const,
-      status: stats.longestCombo >= 10,
-      progress: `${stats.longestCombo} / 10`
+      status: (safeStats.longestCombo || 0) >= 10,
+      progress: `${safeStats.longestCombo || 0} / 10`
     },
     {
       id: 'combo_25',
       title: '🔥 25連擊',
       description: '連續答對 25 題國家位置考驗',
       category: 'combo' as const,
-      status: stats.longestCombo >= 25,
-      progress: `${stats.longestCombo} / 25`
+      status: (safeStats.longestCombo || 0) >= 25,
+      progress: `${safeStats.longestCombo || 0} / 25`
     },
     {
       id: 'combo_50',
       title: '🔥 50連擊',
       description: '連續答對 50 題國家位置考驗',
       category: 'combo' as const,
-      status: stats.longestCombo >= 50,
-      progress: `${stats.longestCombo} / 50`
+      status: (safeStats.longestCombo || 0) >= 50,
+      progress: `${safeStats.longestCombo || 0} / 50`
     },
     {
       id: 'combo_100',
       title: '🔥 100連擊',
       description: '連續答對 100 題國家位置考驗',
       category: 'combo' as const,
-      status: stats.longestCombo >= 100,
-      progress: `${stats.longestCombo} / 100`
+      status: (safeStats.longestCombo || 0) >= 100,
+      progress: `${safeStats.longestCombo || 0} / 100`
     },
 
     // Scores
@@ -235,24 +240,24 @@ export function checkAchievements(stats: PlayerStats, highscore: number) {
       title: '🎮 遊玩10場',
       description: '完成累積 10 場國家位置猜謎遊戲',
       category: 'play' as const,
-      status: stats.playCount >= 10,
-      progress: `${stats.playCount} / 10`
+      status: (safeStats.playCount || 0) >= 10,
+      progress: `${safeStats.playCount || 0} / 10`
     },
     {
       id: 'play_50',
       title: '🎮 遊玩50場',
       description: '完成累積 50 場國家位置猜謎遊戲',
       category: 'play' as const,
-      status: stats.playCount >= 50,
-      progress: `${stats.playCount} / 50`
+      status: (safeStats.playCount || 0) >= 50,
+      progress: `${safeStats.playCount || 0} / 50`
     },
     {
       id: 'play_100',
       title: '🎮 遊玩100場',
       description: '完成累積 100 場國家位置猜謎遊戲',
       category: 'play' as const,
-      status: stats.playCount >= 100,
-      progress: `${stats.playCount} / 100`
+      status: (safeStats.playCount || 0) >= 100,
+      progress: `${safeStats.playCount || 0} / 100`
     },
 
     // Collector
@@ -261,16 +266,16 @@ export function checkAchievements(stats: PlayerStats, highscore: number) {
       title: '🌍 猜中100個不同國家',
       description: '在探索與測驗中累計猜對超過 100 個不同的國家',
       category: 'collector' as const,
-      status: stats.uniqueGuessedCca3s.length >= 100,
-      progress: `${stats.uniqueGuessedCca3s.length} / 100`
+      status: (safeStats.uniqueGuessedCca3s || []).length >= 100,
+      progress: `${(safeStats.uniqueGuessedCca3s || []).length} / 100`
     },
     {
       id: 'collect_all',
       title: '🌍 猜中所有國家至少一次',
       description: '主動正確猜中題庫中全部 115 個以上的精選國家',
       category: 'collector' as const,
-      status: stats.uniqueGuessedCca3s.length >= 115,
-      progress: `${stats.uniqueGuessedCca3s.length} / 115`
+      status: (safeStats.uniqueGuessedCca3s || []).length >= 115,
+      progress: `${(safeStats.uniqueGuessedCca3s || []).length} / 115`
     },
   ];
 
