@@ -53,6 +53,23 @@ export default function AuthModal({ isOpen, onClose, onSuccess, defaultTab = 'lo
       msg = "❌ 密碼強度不足，長度至少需達 8 個字元！";
     } else if (error.code === 'auth/wrong-password' || error.code === 'auth/user-not-found' || error.code === 'auth/invalid-credential') {
       msg = "❌ 電子郵件或密碼輸入錯誤，請重新確認！";
+    } else if (error.code === 'auth/unauthorized-domain') {
+      const currentDomain = window.location.hostname;
+      msg = `🚫 未授權的網域 (unauthorized-domain)
+
+💡 【發生原因】
+此 Firebase 專案未將您目前造訪的網域列入安全白名單。
+
+【請依照以下簡單步驟排除（約需 1 分鐘）】：
+1. 開啟 [Firebase 控制台](https://console.firebase.google.com/)。
+2. 進入本專案，選取左側選單的 【Authentication】並切換至【設定 (Settings)】標籤頁。
+3. 找到【授權網域 (Authorized domains)】區塊，點擊【新增網域 (Add domain)】並新增以下網域：
+   👉 **${currentDomain}**
+   👉 **ais-pre-p6xbxzoojkbdddp2upeoz7-749001144565.asia-east1.run.app**
+   👉 **ais-dev-p6xbxzoojkbdddp2upeoz7-749001144565.asia-east1.run.app**
+
+【此時可用的 100% 成功替代方案】：
+您不需要完成上述設定，直接在下方輸入「電子郵件與密碼」即可完成註冊與登入！此功能在預覽環境 100% 運作良好，能立刻記錄您的大賽積分。`;
     } else if (error.code === 'auth/popup-closed-by-user') {
       msg = `⚠️ Google 登入視窗已被關閉。
 
