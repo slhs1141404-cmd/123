@@ -21,49 +21,28 @@ service cloud.firestore {
     }
 
     function isValidId(id) {
-      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+      return id is string && id.size() >= 1 && id.size() <= 128;
     }
 
     // Entity Schema Validation Blueprint: User Document Structure
     function isValidUser(data) {
-      return (
-        data.keys().hasAll([
-          'username', 'email', 'level', 'xp', 'totalScore', 
-          'highestScore', 'longestCombo', 'gamesPlayed', 
-          'achievements', 'createdAt', 'lastLogin'
-        ]) 
-        && data.keys().size() == 11
-        && data.username is string && data.username.size() >= 1 && data.username.size() <= 40
-        && data.email is string && data.email.size() >= 0 && data.email.size() <= 100
-        && data.level is int && data.level >= 1 && data.level <= 100
-        && data.xp is int && data.xp >= 0 && data.xp <= 5000000
-        && data.totalScore is int && data.totalScore >= 0
-        && data.highestScore is int && data.highestScore >= 0
-        && data.longestCombo is int && data.longestCombo >= 0
-        && data.gamesPlayed is int && data.gamesPlayed >= 0
-        && data.achievements is list && data.achievements.size() <= 100
-        && data.createdAt is timestamp
-        && data.lastLogin is timestamp
-      ) || (
-        data.keys().hasAll([
-          'username', 'password', 'email', 'level', 'xp', 'totalScore', 
-          'highestScore', 'longestCombo', 'gamesPlayed', 
-          'achievements', 'createdAt', 'lastLogin'
-        ]) 
-        && data.keys().size() == 12
-        && data.username is string && data.username.size() >= 1 && data.username.size() <= 40
-        && data.password is string && data.password.size() == 64
-        && data.email is string && data.email.size() >= 0 && data.email.size() <= 100
-        && data.level is int && data.level >= 1 && data.level <= 100
-        && data.xp is int && data.xp >= 0 && data.xp <= 5000000
-        && data.totalScore is int && data.totalScore >= 0
-        && data.highestScore is int && data.highestScore >= 0
-        && data.longestCombo is int && data.longestCombo >= 0
-        && data.gamesPlayed is int && data.gamesPlayed >= 0
-        && data.achievements is list && data.achievements.size() <= 100
-        && data.createdAt is timestamp
-        && data.lastLogin is timestamp
-      );
+      return data.keys().hasAll([
+        'username', 'email', 'level', 'xp', 'totalScore', 
+        'highestScore', 'longestCombo', 'gamesPlayed', 
+        'achievements', 'createdAt', 'lastLogin'
+      ]) 
+      && data.username is string && data.username.size() >= 1 && data.username.size() <= 40
+      && data.email is string && data.email.size() >= 0 && data.email.size() <= 100
+      && data.level is int && data.level >= 1 && data.level <= 100
+      && data.xp is int && data.xp >= 0 && data.xp <= 5000000
+      && data.totalScore is int && data.totalScore >= 0
+      && data.highestScore is int && data.highestScore >= 0
+      && data.longestCombo is int && data.longestCombo >= 0
+      && data.gamesPlayed is int && data.gamesPlayed >= 0
+      && data.achievements is list && data.achievements.size() <= 100
+      && data.createdAt is timestamp
+      && data.lastLogin is timestamp
+      && (!('password' in data) || (data.password is string && data.password.size() == 64));
     }
 
     // Entity Schema Validation Blueprint: Leaderboard Entry Structure
